@@ -14,8 +14,13 @@ use google_generative_ai_rs::v1::{
     gemini::{request::Request, Content, Model, Part, Role},
 };
 
-const OWNER: &str = "lupyuen2";
-const REPO: &str = "wip-nuttx";
+// For Production
+const OWNER: &str = "apache";
+const REPO: &str = "nuttx";
+
+// For Testing
+// const OWNER: &str = "lupyuen2";
+// const REPO: &str = "wip-nuttx";
 
 /// Simple text request using the public API and an API key for authn
 /// To run:
@@ -31,21 +36,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
     let octocrab = octocrab::Octocrab::builder().personal_token(token).build()?;
 
-    // Fetch the Newest Pull Requests
+    // Fetch the 5 Newest Pull Requests that are Open
     let pr_list = octocrab.pulls(OWNER, REPO).list()
         .state(params::State::Open)
         .sort(params::pulls::Sort::Created)
         .direction(params::Direction::Descending)
-        .per_page(1)
+        .per_page(5)
         .send()
         .await?;
     // info!("{:#?}", pr_list);
 
+    // Process every PR
     for pr in pr_list {
         info!("{:#?}", pr);
         let pr_id = pr.number;
         info!("{:#?}", pr_id);
         process_pr(&octocrab, pr_id).await?;
+
+        // Wait 5 seconds
+        std::thread::sleep(
+            std::time::Duration::from_secs(5)
+        );
     }
 
     // Return OK
@@ -57,6 +68,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     let pr = octocrab.pulls(OWNER, REPO)
         .get(pr_id).await?;
     info!("{:#?}", pr);
+    info!("{:#?}", pr.url);
 
     // Skip if PR State is Not Open
     if pr.state.unwrap() != IssueState::Open {
@@ -76,8 +88,8 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Init the Gemini Client
     let client = Client::new_from_model(
-        // Model::Gemini1_5Pro,  // For Production
-        Model::GeminiPro,  // For Testing
+        Model::Gemini1_5Pro,  // For Production
+        // Model::GeminiPro,  // For Testing
         env::var("GEMINI_API_KEY").unwrap().to_string()
     );
 
@@ -129,8 +141,12 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         .create_comment(pr_id, comment_text)
         .await?;
     info!("{:#?}", comment);       
+    info!("{:#?}", pr.url);
 
-    // TODO: Wait 1 minute
+    // Wait 1 minute
+    std::thread::sleep(
+        std::time::Duration::from_secs(60)
+    );
 
     // Return OK
     Ok(())
