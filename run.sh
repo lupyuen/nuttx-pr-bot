@@ -14,9 +14,9 @@ set -x
 export RUST_LOG=info 
 export RUST_BACKTRACE=1
 
-## Handle PRs every minute
+## Handle PRs every 10 minutes
 for (( ; ; ))
 do
     cargo run
-    sleep 60
+    sleep 600
 done
