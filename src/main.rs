@@ -1,17 +1,21 @@
-// Every Minute: Fetch PR Number x to x+10
+// Every Minute: Fetch New PRs
 //   If PR Status = Open
 //   And PR Comments don't include Bot
 //     Then Call Gemini API
 //     And Post Gemini Response as PR Comment
 
-use log::info;
-use octocrab::models::IssueState;
 use std::env;
+use log::info;
+use octocrab::{models::IssueState, Octocrab};
+use octocrab::params;
 
 use google_generative_ai_rs::v1::{
     api::Client,
     gemini::{request::Request, Content, Model, Part, Role},
 };
+
+const OWNER: &str = "lupyuen2";
+const REPO: &str = "wip-nuttx";
 
 /// Simple text request using the public API and an API key for authn
 /// To run:
@@ -27,15 +31,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
     let octocrab = octocrab::Octocrab::builder().personal_token(token).build()?;
 
-    // Fetch the Pull Request
-    let owner = "lupyuen2";
-    let repo = "wip-nuttx";
-    let pr_id = 76;
-    let pr = octocrab.pulls(owner, repo)
+    // Fetch the Newest Pull Requests
+    let pr_list = octocrab.pulls(OWNER, REPO).list()
+        .state(params::State::Open)
+        .sort(params::pulls::Sort::Created)
+        .direction(params::Direction::Descending)
+        .per_page(1)
+        .send()
+        .await?;
+    // info!("{:#?}", pr_list);
+
+    for pr in pr_list {
+        info!("{:#?}", pr);
+        let pr_id = pr.number;
+        info!("{:#?}", pr_id);
+        process_pr(&octocrab, pr_id).await?;
+    }
+
+    // Return OK
+    Ok(())
+}
+
+async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+    // Fetch the PR
+    let pr = octocrab.pulls(OWNER, REPO)
         .get(pr_id).await?;
     info!("{:#?}", pr);
-
-    // TODO: Skip if PR is Missing
 
     // Skip if PR State is Not Open
     if pr.state.unwrap() != IssueState::Open {
@@ -104,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Post the PR Comment
     let comment = octocrab
-        .issues(owner, repo)
+        .issues(OWNER, REPO)
         .create_comment(pr_id, comment_text)
         .await?;
     info!("{:#?}", comment);       
