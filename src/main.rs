@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process every PR
     for pr in pr_list {
-        info!("{:#?}", pr);
+        // info!("{:#?}", pr);
         let pr_id = pr.number;
         info!("{:#?}", pr_id);
         process_pr(&octocrab, pr_id).await?;
@@ -69,7 +69,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     // Fetch the PR
     let pr = octocrab.pulls(OWNER, REPO)
         .get(pr_id).await?;
-    info!("{:#?}", pr);
+    // info!("{:#?}", pr);
     info!("{:#?}", pr.url);
 
     // Skip if PR State is Not Open
