@@ -5,6 +5,7 @@
 //     And Post Gemini Response as PR Comment
 
 use log::info;
+use octocrab::models::IssueState;
 use std::env;
 
 use google_generative_ai_rs::v1::{
@@ -36,9 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // TODO: Skip if PR is Missing
 
-    // TODO: Skip if PR is Not Open
+    // Skip if PR State is Not Open
+    if pr.state.unwrap() != IssueState::Open {
+        info!("Skipping Closed PR");
+        return Ok(());
+    }
 
-    // TODO: Skip if PR contains Comments
+    // Skip if PR contains Comments
     if pr.comments.unwrap() > 0 {
         info!("Skipping PR with comments");
         return Ok(());
