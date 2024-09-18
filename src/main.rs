@@ -36,12 +36,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
     let octocrab = octocrab::Octocrab::builder().personal_token(token).build()?;
 
-    // Fetch the 5 Newest Pull Requests that are Open
+    // Fetch the 10 Newest Pull Requests that are Open
     let pr_list = octocrab.pulls(OWNER, REPO).list()
         .state(params::State::Open)
         .sort(params::pulls::Sort::Created)
         .direction(params::Direction::Descending)
-        .per_page(5)
+        .per_page(10)
         .send()
         .await?;
     // info!("{:#?}", pr_list);
