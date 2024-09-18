@@ -1,7 +1,7 @@
-// Every Minute: Fetch New PRs
+// Every Minute: Fetch the Latest 20 PRs
 //   If PR Status = Open
-//   And PR Comments don't include Bot
-//     Then Call Gemini API
+//   And PR Comments don't exist
+//     Then Call Gemini API to Validate the PR
 //     And Post Gemini Response as PR Comment
 
 use std::env;
@@ -14,19 +14,15 @@ use google_generative_ai_rs::v1::{
     gemini::{request::Request, Content, Model, Part, Role},
 };
 
-// For Production
+// Production Repo
 const OWNER: &str = "apache";
 const REPO: &str = "nuttx";
 
-// For Testing
+// Testing Repo
 // const OWNER: &str = "lupyuen2";
 // const REPO: &str = "wip-nuttx";
 
-/// Simple text request using the public API and an API key for authn
-/// To run:
-/// ```
-/// GEMINI_API_KEY=[YOUR_API_KEY] RUST_LOG=info cargo run
-/// ``
+/// Validate the Latest PRs and post the PR Reviews as PR Comments
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Init the Logger
@@ -36,15 +32,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
     let octocrab = octocrab::Octocrab::builder().personal_token(token).build()?;
 
-    // Fetch the 10 Newest Pull Requests that are Open
+    // Fetch the 20 Newest Pull Requests that are Open
     let pr_list = octocrab.pulls(OWNER, REPO).list()
         .state(params::State::Open)
         .sort(params::pulls::Sort::Created)
         .direction(params::Direction::Descending)
-        .per_page(10)
+        .per_page(20)
         .send()
         .await?;
-    // info!("{:#?}", pr_list);
 
     // Process every PR
     for pr in pr_list {
@@ -63,6 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Validate the PR and post the PR Review as a PR Comment
 async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
     // Fetch the PR
     let pr = octocrab.pulls(OWNER, REPO)
@@ -93,15 +89,19 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         env::var("GEMINI_API_KEY").unwrap().to_string()
     );
 
-    // Input for the request
-    // let input = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```\n\n# Does this PR meet the NuttX Requirements?\n\n## Summary\nBCH: Add readonly configuration for BCH devices\n## Impact\nNONE\n## Testing\n";
+    // Requirements for PR Review
     let requirements = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```";
+
+    // Compose the Prompt for Gemini Request: PR Requirements + PR Body
     let input = 
         requirements.to_string() +
         "\n\n# Does this PR meet the NuttX Requirements?\n\n" +
         &body;
 
-    // Compose the request
+    // For Testing:
+    // let input = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```\n\n# Does this PR meet the NuttX Requirements?\n\n## Summary\nBCH: Add readonly configuration for BCH devices\n## Impact\nNONE\n## Testing\n";
+
+    // Compose the Gemini Request
     let txt_request = Request {
         contents: vec![Content {
             role: Role::User,
@@ -118,11 +118,11 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         system_instruction: None,
     };
 
-    // Send the request
+    // Send the Gemini Request
     let response = client.post(30, &txt_request).await?;
     info!("{:#?}", response);
 
-    // Get the response
+    // Get the Gemini Response
     let response_text = response.rest().unwrap()
         .candidates.first().unwrap()
         .content.parts.first().unwrap()
