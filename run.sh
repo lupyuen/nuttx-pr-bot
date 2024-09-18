@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 ## Handle PRs every minute
 
+## Update the repo
+git pull
+
 ## Set the GitHub and Gemini Tokens
 ## export GITHUB_TOKEN=...
 ## export GEMINI_API_KEY=...
