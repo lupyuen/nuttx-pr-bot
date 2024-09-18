@@ -30,9 +30,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let owner = "lupyuen2";
     let repo = "wip-nuttx";
     let pr_id = 76;
-    let pr = octocrab.pulls(owner, repo).get(pr_id).await?;
+    let pr = octocrab.pulls(owner, repo)
+        .get(pr_id).await?;
     info!("{:#?}", pr);
 
+    // TODO: Skip if PR is Missing
+
+    // TODO: Skip if PR is Not Open
+
+    // TODO: Skip if PR contains Comments
+    if pr.comments.unwrap() > 0 {
+        info!("Skipping PR with comments");
+        return Ok(());
+    }
+    
     // Get the PR Body
     let body = pr.body.unwrap();
     info!("{:#?}", body);
@@ -91,8 +102,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .issues(owner, repo)
         .create_comment(pr_id, comment_text)
         .await?;
-    info!("{:#?}", comment);
-        
+    info!("{:#?}", comment);       
+
+    // TODO: Wait 1 minute
+
     // Return OK
     Ok(())
 }
