@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for pr in pr_list {
         // info!("{:#?}", pr);
         let pr_id = pr.number;
-        info!("{:#?}", pr_id);
+        // info!("{:#?}", pr_id);
         process_pr(&octocrab, pr_id).await?;
 
         // Wait 5 seconds
@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
     // TODO: Skip these PRs. Why do they fail?
     if pr_id == 13456 || pr_id == 13453 {
-        info!("Skipping Problematic PR");
+        info!("Skipping Problematic PR: {}", pr_id);
         return Ok(());
     }
 
@@ -74,13 +74,13 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Skip if PR State is Not Open
     if pr.state.unwrap() != IssueState::Open {
-        info!("Skipping Closed PR");
+        info!("Skipping Closed PR: {}", pr_id);
         return Ok(());
     }
 
     // Skip if PR contains Comments
     if pr.comments.unwrap() > 0 {
-        info!("Skipping PR with comments");
+        info!("Skipping PR with comments: {}", pr_id);
         return Ok(());
     }
     
@@ -126,14 +126,14 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Send the Gemini Request
     let response = client.post(30, &txt_request).await?;
-    info!("{:#?}", response);
+    info!("Gemini Response: {:#?}", response);
 
     // Get the Gemini Response
     let response_text = response.rest().unwrap()
         .candidates.first().unwrap()
         .content.parts.first().unwrap()
         .text.clone().unwrap();
-    info!("{:#?}", response_text);
+    info!("Response TextL {:#?}", response_text);
 
     // Header for PR Comment
     let header = "[**\\[Experimental Bot, please feedback here\\]**](https://github.com/search?q=repo%3Aapache%2Fnuttx+13494&type=pullrequests)";
@@ -146,7 +146,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         .issues(OWNER, REPO)
         .create_comment(pr_id, comment_text)
         .await?;
-    info!("{:#?}", comment);       
+    info!("PR Comment: {:#?}", comment);       
     info!("{:#?}", pr.url);
 
     // Wait 1 minute
