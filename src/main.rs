@@ -101,7 +101,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     // Compose the Prompt for Gemini Request: PR Requirements + PR Body
     let input = 
         requirements.to_string() +
-        "\n\n# Does this PR meet the NuttX Requirements?\n\n" +
+        "\n\n# Does this PR meet the NuttX Requirements? Please be concise\n\n" +
         &body;
 
     // For Testing:
