@@ -3,14 +3,30 @@
 See https://github.com/apache/nuttx/pull/13494#issuecomment-2357300091
 
 ```bash
-## See `run.sh`
-export GITHUB_TOKEN=...
+## See `run.sh` for the Complete Script
+
+## Browse to Google AI Studio > Get API Key > Create API Key > Create API Key In New Project
+## https://aistudio.google.com/app/apikey
 export GEMINI_API_KEY=...
+
+## GitHub Settings > Developer Settings > Tokens (Classic) > Generate New Token (Classic)
+## Check the following:
+## repo (Full control of private repositories)
+## repo:status (Access commit status)
+## repo_deployment (Access deployment status)
+## public_repo (Access public repositories)
+## repo:invite (Access repository invitations)
+## security_events (Read and write security events)
+export GITHUB_TOKEN=...
+
+## Enable Rust Logging
 export RUST_LOG=info 
 export RUST_BACKTRACE=1
+
+## Run the NuttX PR Bot once
 cargo run
 
-## Every Minute: Fetch the Latest 20 PRs
+## Which will: Fetch the Latest 20 PRs
 ##   If PR Status = Open
 ##   And PR Comments don't exist
 ##     Then Call Gemini API to Validate the PR
