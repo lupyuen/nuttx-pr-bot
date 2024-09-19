@@ -22,6 +22,48 @@ const REPO: &str = "nuttx";
 // const OWNER: &str = "lupyuen2";
 // const REPO: &str = "wip-nuttx";
 
+// Requirements for PR Review
+const REQUIREMENTS: &str =
+r#####"
+# Here are the requirements for a NuttX PR
+
+## Summary
+
+* Why change is necessary (fix, update, new feature)?
+* What functional part of the code is being changed?
+* How does the change exactly work (what will change and how)?
+* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.
+* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.
+
+## Impact
+
+* Is new feature added? Is existing feature changed?
+* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).
+* Impact on build (will build process change)? NO / YES (please descibe if yes).
+* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).
+* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).
+* Impact on security (any sort of implications)? NO / YES (please describe if yes).
+* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).
+* Anything else to consider?
+
+## Testing
+
+I confirm that changes are verified on local setup and works as intended:
+* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.
+* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.
+
+Testing logs before change:
+
+```
+your testing logs here
+```
+
+Testing logs after change:
+```
+your testing logs here
+```
+"#####;
+
 /// Validate the Latest PRs and post the PR Reviews as PR Comments
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -95,12 +137,9 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         env::var("GEMINI_API_KEY").unwrap().to_string()
     );
 
-    // Requirements for PR Review
-    let requirements = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```";
-
     // Compose the Prompt for Gemini Request: PR Requirements + PR Body
     let input = 
-        requirements.to_string() +
+        REQUIREMENTS.to_string() +
         "\n\n# Does this PR meet the NuttX Requirements? Please be concise\n\n" +
         &body;
 
