@@ -161,10 +161,16 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     let body = pr.body.unwrap_or("".to_string());
     info!("{:#?}", body);
 
-    // TODO: Retry Gemini API up to 3 times
-
-    // Fetch the PR Reactions
+    // Retry Gemini API up to 3 times, by checking the PR Reactions.
+    // Fetch the PR Reactions. Quit if Both Reactions are set.
     let reactions = get_reactions(octocrab, pr_id).await?;
+    if reactions.0.is_some() && reactions.1.is_some() {
+        info!("Skipping PR after 3 retries: {}", pr_id);
+        return Ok(());
+    }
+
+    // Bump up the PR Reactions: 00 > 01 > 10 > 11
+    bump_reactions(octocrab, pr_id, reactions).await?;
 
     // // Init the Gemini Client
     // let client = Client::new_from_model(
@@ -227,10 +233,13 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     // info!("PR Comment: {:#?}", comment);       
     // info!("{:#?}", pr.url);
 
-    // // Wait 1 minute
-    // std::thread::sleep(
-    //     std::time::Duration::from_secs(60)
-    // );
+    // If successful, delete the PR Reactions
+    delete_reactions(octocrab, pr_id, reactions).await?;
+
+    // Wait 1 minute
+    std::thread::sleep(
+        std::time::Duration::from_secs(60)
+    );
 
     // Return OK
     Ok(())
@@ -271,9 +280,16 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
 }
 
 /// Bump up the 2 PR Reactions: 00 > 01 > 10 > 11
+/// Position 0 is the Rocket Reaction, Position 1 is the Eye Reaction
 async fn bump_reactions(octocrab: &Octocrab, pr_id: u64, reactions: (Option<u64>, Option<u64>)) -> 
     Result<(), Box<dyn std::error::Error>> {
-    // TODO
+    match reactions {
+        // (Rocket, Eye)
+        (None,     None)    => { create_reaction(octocrab, pr_id, ReactionContent::Rocket).await?; }
+        (Some(id), None)    => { delete_reaction(octocrab, pr_id, id).await?; create_reaction(octocrab, pr_id, ReactionContent::Eyes).await?; }
+        (None,     Some(_)) => { create_reaction(octocrab, pr_id, ReactionContent::Rocket).await?; }
+        (Some(_),  Some(_)) => { panic!("Reaction Overflow") }
+    }
     Ok(())
 }
 
