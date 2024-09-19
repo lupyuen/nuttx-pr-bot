@@ -6,9 +6,7 @@
 
 use std::env;
 use log::info;
-use octocrab::{models::IssueState, Octocrab};
-use octocrab::params;
-
+use octocrab::{Octocrab, models::IssueState, params};
 use google_generative_ai_rs::v1::{
     api::Client,
     gemini::{request::Request, Content, Model, Part, Role},
@@ -109,7 +107,8 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     }
 
     // Fetch the PR
-    let pr = octocrab.pulls(OWNER, REPO)
+    let pr = octocrab
+        .pulls(OWNER, REPO)
         .get(pr_id).await?;
     // info!("{:#?}", pr);
     info!("{:#?}", pr.url);
@@ -125,9 +124,41 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         info!("Skipping PR with comments: {}", pr_id);
         return Ok(());
     }
-    
+
+    // Check for Multiple Commits
+    let mut precheck = String::new();
+    let commits = octocrab::instance()
+        .pulls(OWNER, REPO)
+        .pull_number(pr_id)
+        .commits()
+        .await;
+    let commits = commits.unwrap().items;
+    if commits.len() > 1 {
+        precheck.push_str(
+            &format!("__Squash The Commits:__ This PR contains {} Commits. Please Squash the Multiple Commits into a Single Commit.\n\n", commits.len())
+        );
+    }
+
+    // Check for Empty Commit Message
+    let mut empty_message = false;
+    for commit in commits.iter() {
+        // Message should be "title\n\nbody"
+        let message = &commit.commit.message;
+        if message.find("\n").is_some() {
+        } else {
+            info!("Missing Commit Message: {:#?}", message);
+            empty_message = true;
+            break;
+        }
+    }
+    if empty_message {
+        precheck.push_str(
+            "__Fill In The Commit Message:__ This PR contains a Commit with an Empty Commit Message. Please fill in the Commit Message with the PR Summary.\n\n"
+        );
+    }
+
     // Get the PR Body
-    let body = pr.body.unwrap();
+    let body = pr.body.unwrap_or("".to_string());
     info!("{:#?}", body);
 
     // Init the Gemini Client
@@ -178,7 +209,10 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     let header = "[**\\[Experimental Bot, please feedback here\\]**](https://github.com/search?q=repo%3Aapache%2Fnuttx+13494&type=pullrequests)";
 
     // Compose the PR Comment
-    let comment_text = header.to_string() + "\n\n" + &response_text;
+    let comment_text =
+        header.to_string() + "\n\n" +
+        &precheck + "\n\n" +
+        &response_text;
 
     // Post the PR Comment
     let comment = octocrab
