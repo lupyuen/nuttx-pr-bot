@@ -159,7 +159,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Get the PR Body
     let body = pr.body.unwrap_or("".to_string());
-    info!("{:#?}", body);
+    info!("PR Body: {:#?}", body);
 
     // Retry Gemini API up to 3 times, by checking the PR Reactions.
     // Fetch the PR Reactions. Quit if Both Reactions are set.
@@ -172,69 +172,69 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     // Bump up the PR Reactions: 00 > 01 > 10 > 11
     bump_reactions(octocrab, pr_id, reactions).await?;
 
-    // // Init the Gemini Client
-    // let client = Client::new_from_model(
-    //     Model::Gemini1_5Pro,  // For Production
-    //     // Model::GeminiPro,  // For Testing
-    //     env::var("GEMINI_API_KEY").unwrap().to_string()
-    // );
+    // Init the Gemini Client
+    let client = Client::new_from_model(
+        Model::Gemini1_5Pro,  // For Production
+        // Model::GeminiPro,  // For Testing
+        env::var("GEMINI_API_KEY").unwrap().to_string()
+    );
 
-    // // Compose the Prompt for Gemini Request: PR Requirements + PR Body
-    // let input = 
-    //     REQUIREMENTS.to_string() +
-    //     "\n\n# Does this PR meet the NuttX Requirements? Please be concise\n\n" +
-    //     &body;
+    // Compose the Prompt for Gemini Request: PR Requirements + PR Body
+    let input = 
+        REQUIREMENTS.to_string() +
+        "\n\n# Does this PR meet the NuttX Requirements? Please be concise\n\n" +
+        &body;
 
-    // // For Testing:
-    // // let input = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```\n\n# Does this PR meet the NuttX Requirements?\n\n## Summary\nBCH: Add readonly configuration for BCH devices\n## Impact\nNONE\n## Testing\n";
+    // For Testing:
+    // let input = "# Here are the requirements for a NuttX PR\n\n## Summary\n\n* Why change is necessary (fix, update, new feature)?\n* What functional part of the code is being changed?\n* How does the change exactly work (what will change and how)?\n* Related [NuttX Issue](https://github.com/apache/nuttx/issues) reference if applicable.\n* Related NuttX Apps [Issue](https://github.com/apache/nuttx-apps/issues) / [Pull Request](https://github.com/apache/nuttx-apps/pulls) reference if applicable.\n\n## Impact\n\n* Is new feature added? Is existing feature changed?\n* Impact on user (will user need to adapt to change)? NO / YES (please describe if yes).\n* Impact on build (will build process change)? NO / YES (please descibe if yes).\n* Impact on hardware (will arch(s) / board(s) / driver(s) change)? NO / YES (please describe if yes).\n* Impact on documentation (is update required / provided)? NO / YES (please describe if yes).\n* Impact on security (any sort of implications)? NO / YES (please describe if yes).\n* Impact on compatibility (backward/forward/interoperability)? NO / YES (please describe if yes).\n* Anything else to consider?\n\n## Testing\n\nI confirm that changes are verified on local setup and works as intended:\n* Build Host(s): OS (Linux,BSD,macOS,Windows,..), CPU(Intel,AMD,ARM), compiler(GCC,CLANG,version), etc.\n* Target(s): arch(sim,RISC-V,ARM,..), board:config, etc.\n\nTesting logs before change:\n\n```\nyour testing logs here\n```\n\nTesting logs after change:\n```\nyour testing logs here\n```\n\n# Does this PR meet the NuttX Requirements?\n\n## Summary\nBCH: Add readonly configuration for BCH devices\n## Impact\nNONE\n## Testing\n";
 
-    // // Compose the Gemini Request
-    // let txt_request = Request {
-    //     contents: vec![Content {
-    //         role: Role::User,
-    //         parts: vec![Part {
-    //             text: Some(input.to_string()),
-    //             inline_data: None,
-    //             file_data: None,
-    //             video_metadata: None,
-    //         }],
-    //     }],
-    //     tools: vec![],
-    //     safety_settings: vec![],
-    //     generation_config: None,
-    //     system_instruction: None,
-    // };
+    // Compose the Gemini Request
+    let txt_request = Request {
+        contents: vec![Content {
+            role: Role::User,
+            parts: vec![Part {
+                text: Some(input.to_string()),
+                inline_data: None,
+                file_data: None,
+                video_metadata: None,
+            }],
+        }],
+        tools: vec![],
+        safety_settings: vec![],
+        generation_config: None,
+        system_instruction: None,
+    };
 
-    // // Send the Gemini Request
-    // let response = client.post(30, &txt_request).await?;
-    // info!("Gemini Response: {:#?}", response);
+    // Send the Gemini Request
+    let response = client.post(30, &txt_request).await?;
+    info!("Gemini Response: {:#?}", response);
 
-    // // Get the Gemini Response
-    // let response_text = response.rest().unwrap()
-    //     .candidates.first().unwrap()
-    //     .content.parts.first().unwrap()
-    //     .text.clone().unwrap();
-    // info!("Response TextL {:#?}", response_text);
+    // Get the Gemini Response
+    let response_text = response.rest().unwrap()
+        .candidates.first().unwrap()
+        .content.parts.first().unwrap()
+        .text.clone().unwrap();
+    info!("Response Text: {:#?}", response_text);
 
-    // // Header for PR Comment
-    // let header = "[**\\[Experimental Bot, please feedback here\\]**](https://github.com/search?q=repo%3Aapache%2Fnuttx+13494&type=pullrequests)";
+    // Header for PR Comment
+    let header = "[**\\[Experimental Bot, please feedback here\\]**](https://github.com/search?q=repo%3Aapache%2Fnuttx+13494&type=pullrequests)";
 
-    // // Compose the PR Comment
-    // let comment_text =
-    //     header.to_string() + "\n\n" +
-    //     &precheck + "\n\n" +
-    //     &response_text;
+    // Compose the PR Comment
+    let comment_text =
+        header.to_string() + "\n\n" +
+        &precheck + "\n\n" +
+        &response_text;
 
-    // // Post the PR Comment
-    // let comment = octocrab
-    //     .issues(OWNER, REPO)
-    //     .create_comment(pr_id, comment_text)
-    //     .await?;
-    // info!("PR Comment: {:#?}", comment);       
-    // info!("{:#?}", pr.url);
+    // Post the PR Comment
+    let comment = octocrab
+        .issues(OWNER, REPO)
+        .create_comment(pr_id, comment_text)
+        .await?;
+    info!("PR Comment: {:#?}", comment);       
 
     // If successful, delete the PR Reactions
-    delete_reactions(octocrab, pr_id, reactions).await?;
+    delete_reactions(octocrab, pr_id).await?;
+    info!("{:#?}", pr.url);
 
     // Wait 1 minute
     std::thread::sleep(
@@ -275,7 +275,7 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
             }
         }
     }
-    info!("result: {:#?}", result);    
+    info!("get_reactions: {:#?}", result);    
     Ok(result)
 }
 
@@ -294,8 +294,9 @@ async fn bump_reactions(octocrab: &Octocrab, pr_id: u64, reactions: (Option<u64>
 }
 
 /// Delete the PR Reactions
-async fn delete_reactions(octocrab: &Octocrab, pr_id: u64, reactions: (Option<u64>, Option<u64>)) -> 
+async fn delete_reactions(octocrab: &Octocrab, pr_id: u64) -> 
     Result<(), Box<dyn std::error::Error>> {
+    let reactions = get_reactions(octocrab, pr_id).await?;
     if let Some(reaction_id) = reactions.0 {
         delete_reaction(octocrab, pr_id, reaction_id).await?;
     }
@@ -318,6 +319,7 @@ async fn create_reaction(octocrab: &Octocrab, pr_id: u64, content: ReactionConte
 /// Delete the PR Reaction
 async fn delete_reaction(octocrab: &Octocrab, pr_id: u64, reaction_id: u64) -> 
     Result<(), Box<dyn std::error::Error>> {
+    info!("delete_reaction: {:#?}", reaction_id);    
     octocrab
         .issues(OWNER, REPO)
         .delete_reaction(pr_id, reaction_id)
