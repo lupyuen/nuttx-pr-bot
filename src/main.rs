@@ -101,10 +101,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Validate the PR and post the PR Review as a PR Comment
 async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
     // TODO: Skip these PRs. Why do they fail?
-    if pr_id == 13456 || pr_id == 13453 {
-        info!("Skipping Problematic PR: {}", pr_id);
-        return Ok(());
-    }
+    // if pr_id == 13456 || pr_id == 13453 {
+    //     info!("Skipping Problematic PR: {}", pr_id);
+    //     return Ok(());
+    // }
 
     // Fetch the PR
     let pr = octocrab
