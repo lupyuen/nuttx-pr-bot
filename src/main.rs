@@ -6,7 +6,7 @@
 
 use std::env;
 use log::info;
-use octocrab::{models::{reactions, reactions::ReactionContent, IssueState}, params, Octocrab};
+use octocrab::{models::{reactions::ReactionContent, IssueState}, params, Octocrab};
 use google_generative_ai_rs::v1::{
     api::Client,
     gemini::{request::Request, Content, Model, Part, Role},
