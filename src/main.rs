@@ -132,21 +132,23 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         info!("Skipping PR Size XS: {}", pr_id);
         return Ok(());
     }
-    
-    // Check for Multiple Commits
+
+    // Fetch the PR Commits
     // TODO: Change `pull_number` to `pr_commits`
-    let mut precheck = String::new();
     let commits = octocrab
         .pulls(OWNER, REPO)
         .pull_number(pr_id)
         .commits()
         .await;
     let commits = commits.unwrap().items;
-    if commits.len() > 1 {
-        precheck.push_str(
-            &format!("__Squash The Commits:__ This PR contains {} Commits. Please Squash the Multiple Commits into a Single Commit.\n\n", commits.len())
-        );
-    }
+    let mut precheck = String::new();
+
+    // Check for Multiple Commits
+    // if commits.len() > 1 {
+    //     precheck.push_str(
+    //         &format!("__Squash The Commits:__ This PR contains {} Commits. Please Squash the Multiple Commits into a Single Commit.\n\n", commits.len())
+    //     );
+    // }
 
     // Check for Empty Commit Message
     let mut empty_message = false;
