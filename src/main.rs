@@ -6,7 +6,7 @@
 
 use std::env;
 use log::info;
-use octocrab::{models::{reactions::ReactionContent, IssueState}, params, Octocrab};
+use octocrab::{models::{reactions::ReactionContent, IssueState, Label}, params, Octocrab};
 use google_generative_ai_rs::v1::{
     api::Client,
     gemini::{request::Request, Content, Model, Part, Role},
@@ -83,9 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process every PR
     for pr in pr_list {
-        // info!("{:#?}", pr);
         let pr_id = pr.number;
-        // info!("{:#?}", pr_id);
         process_pr(&octocrab, pr_id).await?;
 
         // Wait 5 seconds
@@ -100,17 +98,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Validate the PR and post the PR Review as a PR Comment
 async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Skip these PRs. Why do they fail?
-    // if pr_id == 13456 || pr_id == 13453 {
-    //     info!("Skipping Problematic PR: {}", pr_id);
-    //     return Ok(());
-    // }
-
     // Fetch the PR
     let pr = octocrab
         .pulls(OWNER, REPO)
         .get(pr_id).await?;
-    // info!("{:#?}", pr);
     info!("{:#?}", pr.url);
 
     // Skip if PR State is Not Open
@@ -125,7 +116,25 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         return Ok(());
     }
 
+    // Skip if PR Size is Unknown
+    let labels = pr.labels.unwrap();
+    if labels.is_empty() {
+        info!("Skipping Unknown PR Size: {}", pr_id);
+        return Ok(());
+    }
+
+    // Skip if PR Size is XS
+    let size_xs: Vec<Label> = labels
+        .into_iter()
+        .filter(|l| l.name == "Size: XS")
+        .collect();
+    if size_xs.len() > 0 {
+        info!("Skipping PR Size XS: {}", pr_id);
+        return Ok(());
+    }
+    
     // Check for Multiple Commits
+    // TODO: Change `pull_number` to `pr_commits`
     let mut precheck = String::new();
     let commits = octocrab
         .pulls(OWNER, REPO)
@@ -265,9 +274,6 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
         let user = &reaction.user.login;
         let reaction_id = &reaction.id.0;
         if user == "nuttxpr" {
-            // info!("user: {:#?}", user);
-            // info!("content: {:#?}", content);
-            // info!("reaction_id: {:#?}", reaction_id);    
             match content {
                 ReactionContent::Rocket => { result.0 = Some(*reaction_id) }
                 ReactionContent::Eyes   => { result.1 = Some(*reaction_id) }
@@ -275,7 +281,6 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
             }
         }
     }
-    info!("get_reactions: {:#?}", result);    
     Ok(result)
 }
 
@@ -319,7 +324,6 @@ async fn create_reaction(octocrab: &Octocrab, pr_id: u64, content: ReactionConte
 /// Delete the PR Reaction
 async fn delete_reaction(octocrab: &Octocrab, pr_id: u64, reaction_id: u64) -> 
     Result<(), Box<dyn std::error::Error>> {
-    info!("delete_reaction: {:#?}", reaction_id);    
     octocrab
         .issues(OWNER, REPO)
         .delete_reaction(pr_id, reaction_id)
