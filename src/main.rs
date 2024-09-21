@@ -270,6 +270,7 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
     let reactions = reactions.items;
 
     // Watch for Rocket and Eyes Reactions created by the Bot
+    // TODO: Change `nuttxpr` to the GitHub User ID of the Bot
     let mut result: (Option<u64>, Option<u64>) = (None, None);
     for reaction in reactions.iter() {
         let content = &reaction.content;
