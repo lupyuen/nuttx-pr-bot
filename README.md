@@ -1,6 +1,6 @@
 # LLM Bot that does PR Review for Apache NuttX RTOS
 
-See https://github.com/apache/nuttx/pull/13494#issuecomment-2357300091
+See the [discussion for NuttX PR Review Bot](https://github.com/apache/nuttx/pull/13494#issuecomment-2357300091)
 
 ```bash
 ## See `run.sh` for the Complete Script
@@ -23,20 +23,23 @@ export GITHUB_TOKEN=...
 export RUST_LOG=info 
 export RUST_BACKTRACE=1
 
-## Run the NuttX PR Bot once
-cargo run
+## Run the NuttX PR Bot once on NuttX Repo
+cargo run -- --owner apache --repo nuttx
 
 ## Which will: Fetch the Latest 20 PRs
 ##   If PR Status = Open
 ##   And PR Comments don't exist
 ##     Then Call Gemini API to Validate the PR
 ##     And Post Gemini Response as PR Comment
+
+## For NuttX Apps Repo
+cargo run -- --owner apache --repo nuttx-apps
 ```
 
 # Run Log
 
 ```text
-+ cargo run
++ cargo run --owner apache --repo nuttx
 warning: use of deprecated method `octocrab::pulls::PullRequestHandler::<'octo>::pull_number`: specific PR builder transitioned to pr_review_actions, reply_to_comment, reply_to_comment
    --> src/main.rs:141:10
     |
@@ -725,7 +728,7 @@ warning: `nuttx-pr-bot` (bin "nuttx-pr-bot") generated 1 warning
 + sleep 600
 + (( 1 ))
 + (( 1 ))
-+ cargo run
++ cargo run --owner apache --repo nuttx
 warning: use of deprecated method `octocrab::pulls::PullRequestHandler::<'octo>::pull_number`: specific PR builder transitioned to pr_review_actions, reply_to_comment, reply_to_comment
    --> src/main.rs:141:10
     |

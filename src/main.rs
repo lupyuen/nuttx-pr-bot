@@ -9,6 +9,7 @@ use std::{
     thread::sleep, 
     time::Duration
 };
+use clap::Parser;
 use log::info;
 use google_generative_ai_rs::v1::{
     api::Client,
@@ -20,14 +21,6 @@ use octocrab::{
     params,
     pulls::PullRequestHandler
 };
-
-// Production Repo
-const OWNER: &str = "apache";
-const REPO: &str = "nuttx";
-
-// Testing Repo
-// const OWNER: &str = "lupyuen2";
-// const REPO: &str = "wip-nuttx";
 
 // Requirements for PR Review
 const REQUIREMENTS: &str =
@@ -71,11 +64,25 @@ your testing logs here
 ```
 "#####;
 
+/// Command-Line Arguments
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Owner of the GitHub Repo that will be processed (`apache`)
+    #[arg(long)]
+    owner: String,
+
+    /// Name of the GitHub Repo that will be processed (`nuttx` or `nuttx-apps`)
+    #[arg(long)]
+    repo: String,
+}
+
 /// Validate the Latest PRs and post the PR Reviews as PR Comments
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Init the Logger
+    // Init the Logger and Command-Line Args
     env_logger::init();
+    let args = Args::parse();
 
     // Init the GitHub Client
     let token = std::env::var("GITHUB_TOKEN")
@@ -85,8 +92,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     // Get the Handlers for GitHub Pull Requests and Issues
-    let pulls = octocrab.pulls(OWNER, REPO);
-    let issues = octocrab.issues(OWNER, REPO);
+    let pulls = octocrab.pulls(&args.owner, &args.repo);
+    let issues = octocrab.issues(&args.owner, &args.repo);
 
     // Fetch the 20 Newest Pull Requests that are Open
     let pr_list = pulls
