@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-## Handle PRs every minute
+## Handle PRs for NuttX Kernel and Apps every 10 minutes
 
 ## Update the repo
 git pull
@@ -17,10 +17,10 @@ set -x
 export RUST_LOG=info 
 export RUST_BACKTRACE=1
 
-## Handle PRs for NuttX and Apps every 10 minutes
+## Handle PRs for NuttX Kernel and Apps every 10 minutes
 for (( ; ; ))
 do
-    ## For NuttX Repo
+    ## For NuttX Kernel Repo
     cargo run -- --owner apache --repo nuttx
     sleep 300
 

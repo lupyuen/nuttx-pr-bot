@@ -1,4 +1,4 @@
-// Every Minute: Fetch the Latest 20 PRs
+// Fetch the Latest 20 PRs
 //   If PR Status = Open
 //   And PR Comments don't exist
 //     Then Call Gemini API to Validate the PR
