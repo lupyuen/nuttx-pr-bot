@@ -7,7 +7,7 @@
             "label": "Build",
             "type": "shell",
 
-            "command": ". $HOME/github-token.sh && . $HOME/gemini-token.sh && cargo run -- --owner apache --repo nuttx",
+            "command": ". $HOME/github-token.sh && . $HOME/gemini-token.sh && cargo run -- --owner apache --repo nuttx-apps",
 
             "problemMatcher": "$rustc",
             "group": {
