@@ -17,15 +17,14 @@ set -x
 export RUST_LOG=info 
 export RUST_BACKTRACE=1
 
-## Handle PRs every 10 minutes
+## Handle PRs for NuttX and Apps every 10 minutes
 for (( ; ; ))
 do
     ## For NuttX Repo
     cargo run -- --owner apache --repo nuttx
+    sleep 300
 
     ## For NuttX Apps Repo
     # cargo run -- --owner apache --repo nuttx-apps
-
-    ## Wait a while
-    sleep 600
+    sleep 300
 done
