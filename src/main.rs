@@ -4,12 +4,21 @@
 //     Then Call Gemini API to Validate the PR
 //     And Post Gemini Response as PR Comment
 
-use std::env;
+use std::{
+    env, 
+    thread::sleep, 
+    time::Duration
+};
 use log::info;
-use octocrab::{models::{reactions::ReactionContent, IssueState, Label}, params, Octocrab};
 use google_generative_ai_rs::v1::{
     api::Client,
     gemini::{request::Request, Content, Model, Part, Role},
+};
+use octocrab::{
+    issues::IssueHandler, 
+    models::{reactions::ReactionContent, IssueState, Label}, 
+    params,
+    pulls::PullRequestHandler
 };
 
 // Production Repo
@@ -69,11 +78,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     // Init the GitHub Client
-    let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
-    let octocrab = octocrab::Octocrab::builder().personal_token(token).build()?;
+    let token = std::env::var("GITHUB_TOKEN")
+        .expect("GITHUB_TOKEN env variable is required");
+    let octocrab = octocrab::Octocrab::builder()
+        .personal_token(token)
+        .build()?;
+
+    // Get the Handlers for GitHub Pull Requests and Issues
+    let pulls = octocrab.pulls(OWNER, REPO);
+    let issues = octocrab.issues(OWNER, REPO);
 
     // Fetch the 20 Newest Pull Requests that are Open
-    let pr_list = octocrab.pulls(OWNER, REPO).list()
+    let pr_list = pulls
+        .list()
         .state(params::State::Open)
         .sort(params::pulls::Sort::Created)
         .direction(params::Direction::Descending)
@@ -81,27 +98,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
 
-    // Process every PR
+    // Every 5 Seconds: Process the next PR fetched
     for pr in pr_list {
         let pr_id = pr.number;
-        process_pr(&octocrab, pr_id).await?;
-
-        // Wait 5 seconds
-        std::thread::sleep(
-            std::time::Duration::from_secs(5)
-        );
+        process_pr(&pulls, &issues, pr_id)
+            .await?;
+        sleep(Duration::from_secs(5));
     }
 
     // Return OK
     Ok(())
 }
 
-/// Validate the PR and post the PR Review as a PR Comment
-async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+/// Validate the PR by calling Gemini API. Then post the PR Review as a PR Comment
+async fn process_pr(pulls: &PullRequestHandler<'_>, issues: &IssueHandler<'_>, pr_id: u64) -> Result<(), Box<dyn std::error::Error>> {
     // Fetch the PR
-    let pr = octocrab
-        .pulls(OWNER, REPO)
-        .get(pr_id).await?;
+    let pr = pulls
+        .get(pr_id)
+        .await?;
     info!("{:#?}", pr.url);
 
     // Skip if PR State is Not Open
@@ -135,8 +149,7 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Fetch the PR Commits
     // TODO: Change `pull_number` to `pr_commits`
-    let commits = octocrab
-        .pulls(OWNER, REPO)
+    let commits = pulls
         .pull_number(pr_id)
         .commits()
         .await;
@@ -174,14 +187,14 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
 
     // Retry Gemini API up to 3 times, by checking the PR Reactions.
     // Fetch the PR Reactions. Quit if Both Reactions are set.
-    let reactions = get_reactions(octocrab, pr_id).await?;
+    let reactions = get_reactions(issues, pr_id).await?;
     if reactions.0.is_some() && reactions.1.is_some() {
         info!("Skipping PR after 3 retries: {}", pr_id);
         return Ok(());
     }
 
     // Bump up the PR Reactions: 00 > 01 > 10 > 11
-    bump_reactions(octocrab, pr_id, reactions).await?;
+    bump_reactions(issues, pr_id, reactions).await?;
 
     // Init the Gemini Client
     let client = Client::new_from_model(
@@ -217,11 +230,14 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
     };
 
     // Send the Gemini Request
-    let response = client.post(30, &txt_request).await?;
+    let response = client
+        .post(30, &txt_request)
+        .await?;
     info!("Gemini Response: {:#?}", response);
 
     // Get the Gemini Response
-    let response_text = response.rest().unwrap()
+    let response_text = 
+        response.rest().unwrap()
         .candidates.first().unwrap()
         .content.parts.first().unwrap()
         .text.clone().unwrap();
@@ -237,34 +253,28 @@ async fn process_pr(octocrab: &Octocrab, pr_id: u64) -> Result<(), Box<dyn std::
         &response_text;
 
     // Post the PR Comment
-    let comment = octocrab
-        .issues(OWNER, REPO)
+    let comment = issues
         .create_comment(pr_id, comment_text)
         .await?;
     info!("PR Comment: {:#?}", comment);       
 
     // If successful, delete the PR Reactions
-    delete_reactions(octocrab, pr_id).await?;
+    delete_reactions(issues, pr_id).await?;
     info!("{:#?}", pr.url);
 
     // Wait 1 minute
-    std::thread::sleep(
-        std::time::Duration::from_secs(60)
-    );
+    sleep(Duration::from_secs(60));
 
     // Return OK
     Ok(())
 }
 
 /// Return the Reaction IDs for Rocket and Eyes Reactions, created by the Bot
-async fn get_reactions(octocrab: &Octocrab, pr_id: u64) -> 
+async fn get_reactions(issues: &IssueHandler<'_>, pr_id: u64) -> 
     Result<(Option<u64>, Option<u64>), Box<dyn std::error::Error>> {
     // Fetch the PR Reactions
-    let reactions = octocrab
-        .issues(OWNER, REPO)
+    let reactions = issues
         .list_reactions(pr_id)
-        .per_page(100)
-        .page(0u32)
         .send()
         .await?;
     let reactions = reactions.items;
@@ -289,47 +299,43 @@ async fn get_reactions(octocrab: &Octocrab, pr_id: u64) ->
 
 /// Bump up the 2 PR Reactions: 00 > 01 > 10 > 11
 /// Position 0 is the Rocket Reaction, Position 1 is the Eye Reaction
-async fn bump_reactions(octocrab: &Octocrab, pr_id: u64, reactions: (Option<u64>, Option<u64>)) -> 
+async fn bump_reactions(issues: &IssueHandler<'_>, pr_id: u64, reactions: (Option<u64>, Option<u64>)) -> 
     Result<(), Box<dyn std::error::Error>> {
     match reactions {
         // (Rocket, Eye)
-        (None,     None)    => { create_reaction(octocrab, pr_id, ReactionContent::Rocket).await?; }
-        (Some(id), None)    => { delete_reaction(octocrab, pr_id, id).await?; create_reaction(octocrab, pr_id, ReactionContent::Eyes).await?; }
-        (None,     Some(_)) => { create_reaction(octocrab, pr_id, ReactionContent::Rocket).await?; }
+        (None,     None)    => { create_reaction(issues, pr_id, ReactionContent::Rocket).await?; }
+        (Some(id), None)    => { delete_reaction(issues, pr_id, id).await?; create_reaction(issues, pr_id, ReactionContent::Eyes).await?; }
+        (None,     Some(_)) => { create_reaction(issues, pr_id, ReactionContent::Rocket).await?; }
         (Some(_),  Some(_)) => { panic!("Reaction Overflow") }
     }
     Ok(())
 }
 
 /// Delete the PR Reactions
-async fn delete_reactions(octocrab: &Octocrab, pr_id: u64) -> 
+async fn delete_reactions(issues: &IssueHandler<'_>, pr_id: u64) -> 
     Result<(), Box<dyn std::error::Error>> {
-    let reactions = get_reactions(octocrab, pr_id).await?;
+    let reactions = get_reactions(issues, pr_id).await?;
     if let Some(reaction_id) = reactions.0 {
-        delete_reaction(octocrab, pr_id, reaction_id).await?;
+        delete_reaction(issues, pr_id, reaction_id).await?;
     }
     if let Some(reaction_id) = reactions.1 {
-        delete_reaction(octocrab, pr_id, reaction_id).await?;
+        delete_reaction(issues, pr_id, reaction_id).await?;
     }
     Ok(())
 }
 
 /// Create the PR Reaction
-async fn create_reaction(octocrab: &Octocrab, pr_id: u64, content: ReactionContent) -> 
+async fn create_reaction(issues: &IssueHandler<'_>, pr_id: u64, content: ReactionContent) -> 
     Result<(), Box<dyn std::error::Error>> {
-    octocrab
-        .issues(OWNER, REPO)
-        .create_reaction(pr_id, content)
+    issues.create_reaction(pr_id, content)
         .await?;
     Ok(())
 }
 
 /// Delete the PR Reaction
-async fn delete_reaction(octocrab: &Octocrab, pr_id: u64, reaction_id: u64) -> 
+async fn delete_reaction(issues: &IssueHandler<'_>, pr_id: u64, reaction_id: u64) -> 
     Result<(), Box<dyn std::error::Error>> {
-    octocrab
-        .issues(OWNER, REPO)
-        .delete_reaction(pr_id, reaction_id)
+    issues.delete_reaction(pr_id, reaction_id)
         .await?;
     Ok(())
 }
