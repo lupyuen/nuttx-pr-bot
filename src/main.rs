@@ -22,7 +22,7 @@ use octocrab::{
     pulls::PullRequestHandler
 };
 
-// Requirements for PR Review
+/// Requirements for PR Review
 const REQUIREMENTS: &str =
 r#####"
 # Here are the requirements for a NuttX PR
