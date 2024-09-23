@@ -25,6 +25,6 @@ do
     sleep 300
 
     ## For NuttX Apps Repo
-    # cargo run -- --owner apache --repo nuttx-apps
+    cargo run -- --owner apache --repo nuttx-apps
     sleep 300
 done
