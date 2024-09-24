@@ -1,5 +1,7 @@
 # LLM Bot that does PR Review for Apache NuttX RTOS
 
+Read the article: https://github.com/lupyuen/lupyuen.github.io/blob/master/src/llm.md
+
 See the [discussion for NuttX PR Review Bot](https://github.com/apache/nuttx/pull/13494#issuecomment-2357300091)
 
 ```bash
