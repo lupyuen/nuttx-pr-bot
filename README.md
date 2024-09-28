@@ -1,3 +1,5 @@
+![LLM Bot that does PR Review for Apache NuttX RTOS](https://lupyuen.github.io/images/llm-flow.jpg)
+
 # LLM Bot that does PR Review for Apache NuttX RTOS
 
 Read the article: https://github.com/lupyuen/lupyuen.github.io/blob/master/src/llm.md
