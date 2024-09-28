@@ -2,9 +2,11 @@
 
 # LLM Bot that does PR Review for Apache NuttX RTOS
 
-Read the article: https://github.com/lupyuen/lupyuen.github.io/blob/master/src/llm.md
+Read the article...
 
-See the [discussion for NuttX PR Review Bot](https://github.com/apache/nuttx/pull/13494#issuecomment-2357300091)
+- ["LLM Bot that reviews Pull Requests for Apache NuttX RTOS"](https://lupyuen.codeberg.page/articles/llm.html)
+
+# How To Run
 
 ```bash
 ## See `run.sh` for the Complete Script
