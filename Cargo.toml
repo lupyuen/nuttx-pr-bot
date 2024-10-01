@@ -7,7 +7,7 @@ description = "LLM Bot that reviews Pull Requests for Apache NuttX RTOS"
 homepage = "https://lupyuen.codeberg.page/articles/llm.html"
 repository = "https://github.com/lupyuen/nuttx-pr-bot"
 readme = "README.md"
-keywords = ["nuttx", "rtos", "llm", "pr", "gemini", "github"]
+keywords = ["nuttx", "rtos", "llm", "pr", "gemini"]
 categories = ["command-line-utilities"]
 
 [dependencies]
