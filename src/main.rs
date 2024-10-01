@@ -1,8 +1,8 @@
-// Fetch the Latest 20 PRs
-//   If PR Status = Open
-//   And PR Comments don't exist
-//     Then Call Gemini API to Validate the PR
-//     And Post Gemini Response as PR Comment
+//! Fetch the Latest 20 PRs:
+//!   If PR Status = Open
+//!   And PR Comments don't exist:
+//!     Then Call Gemini API to Validate the PR
+//!     And Post Gemini Response as PR Comment
 
 use std::{
     env, 
